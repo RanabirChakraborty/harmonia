@@ -23,6 +23,15 @@ installErisCollection
 
 setRequiredEnvVars
 
+BASE_CONFIG_PATH="${WORKDIR}/.config/molecule/config.yml"
+
+if [ -f "${BASE_CONFIG_PATH}" ]; then
+  echo "INFO: Found base config at ${BASE_CONFIG_PATH}, using it."
+  export MOLECULE_BASE_CONFIG="${BASE_CONFIG_PATH}"
+else
+  echo "INFO: No base config found at ${BASE_CONFIG_PATH}, running without one."
+fi
+
 readonly EXTRA_ARGS="$(loadJBossNetworkAPISecrets)"
 export EXTRA_ARGS
 # shellcheck disable=SC2231

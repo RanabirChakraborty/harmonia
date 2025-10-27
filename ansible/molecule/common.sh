@@ -58,9 +58,14 @@ runMolecule() {
   local config_scenario=${1}
   local scenario_driver_name=${2}
   local extra_args=${3}
+  local base_config_arg=""
+
+  if [[ -n "${MOLECULE_BASE_CONFIG}" ]]; then
+    base_config_arg="--base-config ${MOLECULE_BASE_CONFIG}"
+  fi
 
    # shellcheck disable=SC2086
-   molecule ${MOLECULE_DEBUG} test ${config_scenario} ${scenario_driver_name} -- --ssh-extra-args="-o StrictHostKeyChecking=no" ${extra_args}
+   molecule ${MOLECULE_DEBUG} ${base_config_arg} test ${config_scenario} ${scenario_driver_name} -- --ssh-extra-args="-o StrictHostKeyChecking=no" ${extra_args}
 }
 
 executeRequestedScenarios() {
@@ -94,6 +99,11 @@ runMoleculeScenario() {
   local scenario_name=${1:-"${SCENARIO_NAME}"}
   local scenario_driver_name=${2:-"${HARMONIA_MOLECULE_DEFAULT_DRIVER_NAME}"}
   local extra_args=${3:-"${EXTRA_ARGS}"}
+  local base_config_arg=""
+
+  if [[ -n "${MOLECULE_BASE_CONFIG}" ]]; then
+    base_config_arg="--base-config ${MOLECULE_BASE_CONFIG}"
+  fi
 
   set +e
   MOLECULE_RUN_STATUS=0
@@ -175,6 +185,9 @@ copyCollectionFrom() {
     cp -r "${path_to_collection}"/* "${workdir}"
     cp "${path_to_collection}/.ansible-lint" "${workdir}"
     cp "${path_to_collection}/.yamllint" "${workdir}"
+    if [ -d "${path_to_collection}/.config" ]; then
+      cp -r "${path_to_collection}/.config" "${workdir}"
+    fi
     echo 'Done.'
   else
     echo "Invalid path to collection (does not exists or not a directory): ${path_to_collection}."
