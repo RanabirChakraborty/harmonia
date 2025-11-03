@@ -58,22 +58,29 @@ runMolecule() {
   local config_scenario=${1}
   local scenario_driver_name=${2}
   local extra_args=${3}
+  local platform_arg=${4}
+  local base_config_arg=""
+
+  if [[ -n "${MOLECULE_BASE_CONFIG}" ]]; then
+    base_config_arg="--base-config ${MOLECULE_BASE_CONFIG}"
+  fi
 
    # shellcheck disable=SC2086
-   molecule ${MOLECULE_DEBUG} test ${config_scenario} ${scenario_driver_name} -- --ssh-extra-args="-o StrictHostKeyChecking=no" ${extra_args}
+   molecule ${MOLECULE_DEBUG} ${base_config_arg} test ${config_scenario} ${platform_arg} ${scenario_driver_name} -- --ssh-extra-args="-o StrictHostKeyChecking=no" ${extra_args}
 }
 
 executeRequestedScenarios() {
   local scenario_name=${1}
   local scenario_driver_name=${2}
   local extra_args=${3}
+  local platform_arg=${4}
 
   declare -A scenarios_status
   # shellcheck disable=SC2001
   for scenario in $(echo "${scenario_name}" | sed -e 's;,;\n;g')
   do
     # shellcheck disable=SC2086
-    runMolecule "-s ${scenario}" "-d ${scenario_driver_name}" "${extra_args}"
+    runMolecule "-s ${scenario}" "-d ${scenario_driver_name}" "${extra_args}" "${platform_arg}"
     scenarios_status["${scenario}"]=${?}
   done
   export MOLECULE_RUN_STATUS="$(echo "${scenarios_status[@]}" | grep -e 1 -c)"
@@ -94,15 +101,26 @@ runMoleculeScenario() {
   local scenario_name=${1:-"${SCENARIO_NAME}"}
   local scenario_driver_name=${2:-"${HARMONIA_MOLECULE_DEFAULT_DRIVER_NAME}"}
   local extra_args=${3:-"${EXTRA_ARGS}"}
+  local base_config_arg=""
+  local platform_arg=""
+
+  if [[ -n "${MOLECULE_BASE_CONFIG}" ]]; then
+    base_config_arg="--base-config ${MOLECULE_BASE_CONFIG}"
+  fi
+
+  if [[ "${extra_args}" == *"--platform-name"* ]]; then
+    platform_arg=$(echo "${extra_args}" | grep -o -E '\--platform-name [^ ]+' | head -n1)
+    extra_args=$(echo "${extra_args}" | sed -E 's/--platform-name [^ ]+//')
+  fi
 
   set +e
   MOLECULE_RUN_STATUS=0
   if [ "${scenario_name}" != '--all' ]; then
-    executeRequestedScenarios "${scenario_name}" "${scenario_driver_name}" "${extra_args}"
+    executeRequestedScenarios "${scenario_name}" "${scenario_driver_name}" "${extra_args}" "${platform_arg}"
   else
-    echo "DEBUG> molecule ${MOLECULE_DEBUG} test "${scenario_name}" -d "${scenario_driver_name}" -- ${extra_args}"
+    echo "DEBUG> molecule ${MOLECULE_DEBUG} ${base_config_arg} test ${platform_arg} "${scenario_name}" -d "${scenario_driver_name}" -- ${extra_args}"
     # shellcheck disable=SC2086
-    molecule ${MOLECULE_DEBUG} test "${scenario_name}" -d "${scenario_driver_name}" -- ${extra_args}
+    molecule ${MOLECULE_DEBUG} ${base_config_arg} test ${platform_arg} "${scenario_name}" -d "${scenario_driver_name}" -- ${extra_args}
     MOLECULE_RUN_STATUS="${?}"
   fi
   readonly MOLECULE_RUN_STATUS
